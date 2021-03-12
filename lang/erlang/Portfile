@@ -5,12 +5,12 @@ PortGroup           github 1.0
 PortGroup           wxWidgets 1.0
 PortGroup           compiler_blacklist_versions 1.0
 
-set tag_prefix      OTP-
-github.setup        erlang otp 23.2.7 ${tag_prefix}
+set release_prefix  OTP-
+github.setup        erlang otp 23.2.7 ${release_prefix}
 name                erlang
 
 github.tarball_from releases
-distname            ${tag_prefix}${version}
+distname            ${release_prefix}${version}
 
 categories          lang erlang
 maintainers         {ciserlohn @ci42}
