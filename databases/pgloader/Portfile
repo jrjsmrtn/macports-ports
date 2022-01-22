@@ -1,0 +1,85 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+
+github.setup        dimitri pgloader 3.6.3 v
+revision            0
+
+categories          databases
+maintainers         @jrjsmrtn openmaintainer
+license             Permissive
+platforms           darwin
+description         pgloader loads data into PostgreSQL
+long_description    \
+    pgloader loads data from various sources into PostgreSQL. It can \
+    transform the data it reads on the fly and submit raw SQL before \
+    and after the loading. It uses the COPY PostgreSQL protocol to \
+    stream the data into the server, and manages errors by filling a \
+    pair of reject.dat and reject.log files.
+
+checksums           rmd160  f726c62322415f7d215fd5d50c983a3887849f5e \
+                    sha256  c0d9932cb57e772d800ed805230e52ca98ec965b1d55162dead9b42f9f7230b1 \
+                    size    3718249
+
+use_configure       no
+
+if { ${subport} eq ${name} } {
+    depends_build       port:gawk \
+                        port:unzip \
+                        port:libzip \
+                        port:curl
+
+    # port:cl-quicklisp is not used to build pgloader. Yet.
+
+    depends_lib         port:sqlite3 \
+                        port:freetds
+
+    use_parallel_build  no
+    build.target        pgloader
+
+    destroot {
+        set bindir ${destroot}${prefix}/bin
+        xinstall -m 755 ${worksrcpath}/build/bin/pgloader ${bindir}
+    }
+
+    variant sbcl conflicts ccl description "Compile using SBCL" {
+        depends_build-append    port:sbcl
+    }
+
+    variant ccl conflicts sbcl description "Compile using CCL" {
+        depends_lib-append      port:ccl
+        build.pre_args          CL=ccl
+    }
+
+    if {![variant_isset ccl]} {
+        default_variants +sbcl
+    }
+}
+
+subport ${name}-docs {
+    description         Documentation for ${name}
+    long_description    {*}${description}
+
+    set python_version  310
+    depends_build       port:py${python_version}-sphinx \
+                        port:py${python_version}-sphinx_rtd_theme
+
+    set topworksrcpath  ${worksrcpath}
+    worksrcdir          ${distname}/docs
+    build.target        html
+
+    destroot {
+        set docdir ${destroot}${prefix}/share/doc/${name}
+        xinstall -d ${docdir}
+
+        xinstall -m 644 -W ${topworksrcpath} \
+            LICENSE \
+            README.md \
+            TODO.md \
+            ${docdir}
+
+        copy ${worksrcpath}/_build/${build.target} \
+            ${docdir}
+    }
+}
