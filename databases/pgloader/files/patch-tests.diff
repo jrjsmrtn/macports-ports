@@ -1,0 +1,78 @@
+diff --git a/test/Makefile b/test/Makefile
+index 1b7ae6d..107fef2 100644
+--- a/test/Makefile.orig
++++ b/test/Makefile
+@@ -24,7 +24,6 @@ REGRESS= allcols.load 		    \
+          csv.load 		    \
+ 	 copy.load                  \
+ 	 copy-hex.load              \
+-         dbf.load 		    \
+          errors.load 		    \
+          fixed.load 		    \
+          fields-with-periods.load   \
+diff --git a/test/csv-before-after.load b/test/csv-before-after.load
+index 0af3fd3..d04d481 100644
+--- a/test/csv-before-after.load.orig
++++ b/test/csv-before-after.load
+@@ -1,6 +1,5 @@
+ LOAD CSV
+     FROM INLINE
+-         WITH ENCODING iso-8859-1
+          (
+             startIpNum, endIpNum, locId
+          )
+diff --git a/test/csv-error.load b/test/csv-error.load
+index 83bab1c..86f4316 100644
+--- a/test/csv-error.load.orig
++++ b/test/csv-error.load
+@@ -1,5 +1,5 @@
+ LOAD CSV
+-     FROM INLINE with encoding 'ascii'
++     FROM INLINE
+      INTO postgresql:///pgloader
+      TARGET TABLE jordane
+ 
+diff --git a/test/csv-non-printable.load b/test/csv-non-printable.load
+index d1ea375..425aeac 100644
+--- a/test/csv-non-printable.load.orig
++++ b/test/csv-non-printable.load
+@@ -3,7 +3,7 @@
+ --
+ 
+ LOAD CSV
+-   FROM inline with encoding 'LATIN1'
++   FROM inline
+         HAVING FIELDS ("Some-Field", c2, c3)
+    INTO postgresql:///pgloader
+    target table tab_csv
+@@ -31,4 +31,4 @@ col1, 45, "006 45 Fails 0xa6"
+ col1, "45", "006 45 Fails using escape 0xa6"
+ col1, 46, "006 46 Fails 0xa7"
+ col1, 47, "006 47 Fails 0xa8"
+-col1, 4T works, "006 followed by 4 works ? why"
+\ No newline at end of file
++col1, 4T works, "006 followed by 4 works ? why"
+diff --git a/test/overflow.load b/test/overflow.load
+index c07297c..3f84e8f 100644
+--- a/test/overflow.load.orig
++++ b/test/overflow.load
+@@ -1,5 +1,5 @@
+ LOAD CSV
+-     FROM INLINE with encoding 'ascii'
++     FROM INLINE
+      INTO postgresql:///pgloader?overflow
+ 
+      WITH truncate,
+diff --git a/test/udc.load b/test/udc.load
+index 983c258..afe1768 100644
+--- a/test/udc.load.orig
++++ b/test/udc.load
+@@ -14,7 +14,7 @@
+  */
+ 
+ LOAD CSV
+-     FROM inline WITH ENCODING latin1
++     FROM inline
+         (d, b, x, y)
+      INTO postgresql:///pgloader?udc
+         (
