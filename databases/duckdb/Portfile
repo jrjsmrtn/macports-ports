@@ -8,7 +8,7 @@ PortGroup           openssl         1.0
 
 github.setup        cwida duckdb 1.5.6 v
 github.tarball_from archive
-revision            0
+revision            1
 
 homepage            https://www.duckdb.org
 
@@ -27,38 +27,625 @@ license             MIT
 maintainers         {gmail.com:herby.gillot @herbygillot} \
                     openmaintainer
 
-checksums           rmd160  c993ebc1d1c149e26707abf913b059f7cd6b2f4a \
+checksums           ${distname}${extract.suffix} \
+                    rmd160  c993ebc1d1c149e26707abf913b059f7cd6b2f4a \
                     sha256  1fadcbe9e69e1470f9093b6bcde08daf477d729c449e59a807f45c346622099b \
                     size    100988480
 
-patchfiles-append   no-ccache.patch \
-                    no-clangd-cache.patch
+# DuckDB's own signed builds of the extensions MacPorts does not build into
+# the library, one subport each, installed where the library looks for them
+# (EXTENSION_DIRECTORIES below). A MacPorts build of an extension would be
+# unsigned, which DuckDB refuses to load, so these are DuckDB's binaries,
+# fetched per version and architecture.
+#
+# DuckDB's known extensions not built into duckdb, by the names DuckDB
+# publishes them under, except motherduck, whose licence is not stated, and
+# odbc_scanner, which links Homebrew's unixODBC by absolute path. Each entry
+# holds the extension's own version (a commit, read from the file), an
+# optional license (MIT by default), the extensions it loads at start
+# (depends), notes, and the checksums of each platform DuckDB publishes it
+# for, which sets the subport's supported_archs. DuckDB can republish an
+# extension at the same URL after a release; extension-checksums.py --check
+# reports it.
+# Each bundles its dependencies statically; mysql_scanner and spatial carry
+# LGPL code (libmariadb, GEOS). Regenerate the checksums for a new version
+# with extension-checksums.py.
+set extension_dir   ${prefix}/lib/duckdb/extensions
+array set known_extensions {
+    avro {
+        version f9d5902
+        osx_arm64 { \
+            rmd160 808cf6c38bf1084713b55373a700a03c662d45b3 \
+            sha256 64ae369ce8fffa4006232e4228a88254e16ab0d843fb8022ff22ede347c6b1b2 \
+            size 2178940 \
+            md5 e163b3ae4cc66bccee3dbbd39e07b621
+        }
+        osx_amd64 { \
+            rmd160 dd7c32c57ce8397790bba41862325562f764dced \
+            sha256 00da7167b970d71318ad61294e5e8112737e27abdbe992ee58f28a8bc28a61c8 \
+            size 2545628 \
+            md5 baece89833a07bdac2fad87b3489213c
+        }
+    }
+    aws {
+        version 28c853c
+        osx_arm64 { \
+            rmd160 4371b24a22ac89cdf8d1c60bae3516cc0058046e \
+            sha256 fa7a74da760c8a609b81704942817f9599cac1c9efbc8c9a7a3ee8691dddeb85 \
+            size 6401508 \
+            md5 b9e43e5b2a35e60154e4e0a3399ec370
+        }
+        osx_amd64 { \
+            rmd160 fd18a9a7621f03266124d80de05cf22f6f6009df \
+            sha256 839ffb975568fe2c431be48b3b814acdcde7b3736bd48f71726a31ae41e2c99d \
+            size 6610118 \
+            md5 a1556c3e90a6fda5d18b26702b7f914b
+        }
+    }
+    azure {
+        version 003214c
+        osx_arm64 { \
+            rmd160 7c8df96b84926ebe76f4d60ff2ea4fb9842e5888 \
+            sha256 75a7a1edc3fd6d88cc3341f3e775c4da4f9268b72666a814cc5b3c86a0cbe92c \
+            size 4859301 \
+            md5 5ac9a6ca8a66857c73b89ac84a779840
+        }
+        osx_amd64 { \
+            rmd160 4c526688c98011349e7da87992db6490862bcc72 \
+            sha256 c296dd7782f878d53b2420b475857be9e198fa98165b6f47b88f4536de9cae01 \
+            size 4778044 \
+            md5 fc6e1a42267efab7cb2e3a4d268f4f04
+        }
+    }
+    delta {
+        version 6059958
+        osx_arm64 { \
+            rmd160 e70fd119216826b3e0f5cc378412c20af1b500b8 \
+            sha256 4092213d7c7ecabd704e6463a9f487846400dbcb757083fdc9274e0c26bbf51c \
+            size 19144807 \
+            md5 24aabd045b0913afdfe323657bca4e51
+        }
+        osx_amd64 { \
+            rmd160 3e1966551350614bfadde082ff71a7bbea19f796 \
+            sha256 cecf743f7b0b07fe79ebb55db77820451ecd545ac84d132bf1818116a3c0d96a \
+            size 20899806 \
+            md5 6c7a638e664faa931ea4ffd13fe308ae
+        }
+    }
+    ducklake {
+        version ac7595b0
+        osx_arm64 { \
+            rmd160 64bfe98a597380fc72605bdd34505a9369ff5579 \
+            sha256 fd7fe9bc2602336601c5fdeb5f1574fab6ff0a45d32a9a70694f29eb02827b42 \
+            size 8426364 \
+            md5 1b1c27ba8c21f4f90fc371188fb57309
+        }
+        osx_amd64 { \
+            rmd160 62aa1b650821045b79287111bbd5eacafb290819 \
+            sha256 0064ba4c429933d6f6eb2c4ff66132732ac071fff250efb73e8a9214337bb75c \
+            size 9559961 \
+            md5 80eeecfe39c2ad83cc669161c1f45082
+        }
+    }
+    encodings {
+        version 06295e7
+        osx_arm64 { \
+            rmd160 a95069a60e355999316c95f4c169812a029b46bb \
+            sha256 a6c4ec0bd299aa74a0e81eca0c508f0acee3fb992964147542f8c05faed5525a \
+            size 21543194 \
+            md5 9fcb013f306681700f1bd799daa919db
+        }
+        osx_amd64 { \
+            rmd160 176cfa25a275288ad445cf3eb798955d12fc5159 \
+            sha256 3afac7a46d85523731c496f9068f7dea6559477a0be178dc48c8bbb30bd474ca \
+            size 20609706 \
+            md5 b5bb89ca70f2ad0046a3c61985f06f47
+        }
+    }
+    excel {
+        version f4c72b5
+        osx_arm64 { \
+            rmd160 ef9c51e6d9418f3b3259598edccdda4c9a422001 \
+            sha256 327c04c3b0c850592c50637f46e4d91e280978a393bc3b889f6d555aba08240d \
+            size 2144371 \
+            md5 ab26175f08aec97367759f5d2fbfa01d
+        }
+        osx_amd64 { \
+            rmd160 4784cfbb717596c05578c7bdc9a25157748fa532 \
+            sha256 551bb3c1a8b8c579e9e308a74f9a70b18669461dc1789d0123931ad890172d12 \
+            size 2477662 \
+            md5 135ec4dbd6cddbebefccf1f631db6840
+        }
+    }
+    fts {
+        version 6814ec9
+        osx_arm64 { \
+            rmd160 a7d3c35b5f12221621fd80bcd9355e664804f7f5 \
+            sha256 b65dbb5f976a0a345bafc72417280942837ed93231640aaf74167a894b65f8c2 \
+            size 1553082 \
+            md5 86a6e11c96e9f418656be7c1a00d433b
+        }
+        osx_amd64 { \
+            rmd160 1c3084d5efb034e4ffa815d5f002de129db1e9b0 \
+            sha256 b31b8995e82427ba9f6e2449e0c15efad415be03e4cf847cab6b75c86339cec0 \
+            size 1698338 \
+            md5 07e96322b1bbbec0e8f0c82a8a73b64c
+        }
+    }
+    iceberg {
+        version 890b78a9c
+        depends avro
+        osx_arm64 { \
+            rmd160 c36a04bb2b5de4c3b2d71f74ccaa8094c63bf663 \
+            sha256 48766dd86177c1e4b163618b9d8f81639e9907ec0d5513fc309fdf6f4445a3cb \
+            size 11412540 \
+            md5 94a38c3474535f05d06366a235285cea
+        }
+        osx_amd64 { \
+            rmd160 e6a8fd79d473348a3a4dca0dcaa50ed6a2359f47 \
+            sha256 42480926f04a683ddba7d0af6bef9d2467abc4de4fe497f8878200a1f8209400 \
+            size 12276632 \
+            md5 e38c5105b9b2389052fbdb07c0708a13
+        }
+    }
+    inet {
+        version fe7f60b
+        osx_arm64 { \
+            rmd160 cc53ab4bcc915cfb6aad9c4c170945a7fcfc8aaf \
+            sha256 7abed3efa60dc5b51c12e404e876bef8d53970de0ad78137ca883bfc8bf12fb5 \
+            size 1540558 \
+            md5 da2ffe4b480c93b35c9eadaf064270a4
+        }
+        osx_amd64 { \
+            rmd160 91adb4c75cb94b29d8ad8af538b39c09b08e1bd8 \
+            sha256 e4ed78371968c17e29b718341f3db739fe9f986ba0e7612d995b405b21a483ba \
+            size 1681446 \
+            md5 6cd084546a69a07f1ddb3bcec47ff178
+        }
+    }
+    lance {
+        version 2913169
+        license Apache-2
+        osx_arm64 { \
+            rmd160 6c74cc7e44c16d0ae0fe24a62ec01513baa4a054 \
+            sha256 a6cd07feef91e48bae6ea00bccb4b5197a5afa10d712c7d20bda14c37ff6bfe5 \
+            size 69309027 \
+            md5 e09b35f8c2719e25f4e3e26e56948415
+        }
+    }
+    mysql_scanner {
+        version 99c2e09
+        license {MIT LGPL-2.1+}
+        osx_arm64 { \
+            rmd160 3e362c2712a0de346c30b6ad72329dc94fdde2dc \
+            sha256 e5cd32f2990048fe1cb966f341d96bc2ffe64e7053bf222a6f91053dbf2e4da5 \
+            size 10231243 \
+            md5 372d8d1540d0a3b829d02b5f1f3b92a8
+        }
+        osx_amd64 { \
+            rmd160 bc7e0515f3fdc27cf4dddf314fa63d96c11fcb4f \
+            sha256 313f7e76733e95b197a9f09a84d0eedec77da0874fa436f145267a4517696b9e \
+            size 11020687 \
+            md5 ce9c19c84cc8bd2e0f9b8d71d65e41d1
+        }
+    }
+    quack {
+        version 7e80f7f
+        osx_arm64 { \
+            rmd160 8568524fae6a0840cb9fdcf2b01e4602094d2c07 \
+            sha256 4738b82495795d77d859e87782714b5bc5e5ff0679ae6b388de3fef08c393b69 \
+            size 7789053 \
+            md5 1df84aab218f7127abc552fea60a4668
+        }
+        osx_amd64 { \
+            rmd160 b655d48410658554a8c726a464b527ada60aa6c6 \
+            sha256 906b8535162e82e81c5a133a94a400150cbc838c797a3de387e51fa7f09fcd6e \
+            size 8851067 \
+            md5 a5d78de1894a5643a687e1b65b8bc7ef
+        }
+    }
+    spatial {
+        version 04270fe
+        license {MIT LGPL-2.1}
+        osx_arm64 { \
+            rmd160 e8915c374cf1c74d24d9a802e89106f7a91f95c7 \
+            sha256 a5f5ee0e73379ce7dcc7a8745cf199a0aea56726f82998af4386132fd1147249 \
+            size 20222627 \
+            md5 c9122a1f089c702ad25619b49187cb54
+        }
+        osx_amd64 { \
+            rmd160 effb68a5174a52b176b3fc08ed0caa5f60763a16 \
+            sha256 8e9a61bbbce0cacaf23f3d3537876e0e26d92a9ffbe15666eaa2cdd4030fb4c9 \
+            size 21560692 \
+            md5 0e49e2fde498273e926635e0b1aaf329
+        }
+    }
+    tpcds {
+        version v1.5.6
+        osx_arm64 { \
+            rmd160 cc41bb94bef590dbc6196efbef10a33dd2092da7 \
+            sha256 6576300f5b3cdb6cde86cd579b75fb5ef98b823ef6b94228c98916a14f5b99ff \
+            size 4326928 \
+            md5 b6fddf2bb4c8c2cc800bad23dc3851be
+        }
+        osx_amd64 { \
+            rmd160 cc421ffc181b8481fcf0b5bdac7d38c8a688a2d4 \
+            sha256 026c7b1f47efbedf9dee122a4f17bb91ffafc943cac33f3769c616bc9611f110 \
+            size 4819977 \
+            md5 3c94f67badf6923000ecd171aa10e4cb
+        }
+    }
+    tpch {
+        version v1.5.6
+        osx_arm64 { \
+            rmd160 f8796978cd0c6dfce4829d5930c9d30866eb4c77 \
+            sha256 1b37b59168a14e1e147702f315ec9ef7cfa029ee5d4ca9342f01635132665733 \
+            size 3837219 \
+            md5 42ba6892cdcfa7795a12d9662d6620f6
+        }
+        osx_amd64 { \
+            rmd160 5100a50646a818ce4eb6f23e1acf93dad43b511e \
+            sha256 bd4aed693742dc63e8f1ad23029ec4cb25161e4ee8a8b8d68958fdf85b9c1d13 \
+            size 4337716 \
+            md5 05750927f1756c228167e2d3fc662525
+        }
+    }
+    ui {
+        version 0628932
+        notes {Until duckdb/duckdb-ui#203 is fixed, LOAD ui fails unless ~/.duckdb exists: run mkdir ~/.duckdb first.}
+        osx_arm64 { \
+            rmd160 e6727fcf2d3104cd9410ecfebe90f4ab3e372a33 \
+            sha256 493de959271462d425f344d27516f1c651733bd669bbdad5fc61b01f5c665523 \
+            size 10128994 \
+            md5 9ce2e141ef71ff03d9dce6b462e76378
+        }
+        osx_amd64 { \
+            rmd160 68eb4eebb0efe3cb45f5d83bb56ae69e1d1169fe \
+            sha256 c8181b2aea0d4862759949577013a4e4fc98627a4f96097825654fba41f401cc \
+            size 10884192 \
+            md5 7820ae64de7b9461e31182e05d2487ec
+        }
+    }
+    unity_catalog {
+        version fa22364
+        osx_arm64 { \
+            rmd160 c8279370beb45e52f3c53c919978e8cd0cf79bbb \
+            sha256 1a37da3eadba11b3b35c33d6d579751f80c212190c822692af03e8a34c32923b \
+            size 7649932 \
+            md5 e621b421303ace7ca032ab159e5885b6
+        }
+        osx_amd64 { \
+            rmd160 0dc9f25610148d6657d7496ec184114e8420caf7 \
+            sha256 531bda5680efd2d1d91031b2f737e63c683124781a65a128c740d928cf2ca9da \
+            size 8703759 \
+            md5 5d348393642da54487d46ab070ef2b49
+        }
+    }
+    vortex {
+        version b86c6ab
+        osx_arm64 { \
+            rmd160 87f1326547c4fd9139a25bda9592c088cf420424 \
+            sha256 36f5b0e80e3896e81677a7c2421b404a6201ffbcf9f9d9bf97e253f15cbed20c \
+            size 18063806 \
+            md5 8b617c50fab958970a1181ed06239966
+        }
+        osx_amd64 { \
+            rmd160 8b13f17f5fe2f9ccc69a9f04d00dce0409ef0f78 \
+            sha256 67195e8f2355ef36ab6d883a9487a483b3acb4506c5c86d53535eeef544a1bdf \
+            size 20252654 \
+            md5 99cff0a36ad3abc69f69cae61a39731f
+        }
+    }
+    vss {
+        version b833341
+        osx_arm64 { \
+            rmd160 d21a06f7ca89a745dbdb75a33799f59c26020720 \
+            sha256 67f10bd4491f792189200beb705257094ece03bbc916f11912c5607771dd1c67 \
+            size 7687720 \
+            md5 023b932b3e7d152b49b3cb76e2e00a65
+        }
+        osx_amd64 { \
+            rmd160 568ae341740e5bcf27cffe62383c182d4bbbd445 \
+            sha256 e688b1db608ca6164dea0f49f86e78932d94915d3a7c3c98af556502dd8d8d9e \
+            size 8734975 \
+            md5 01a4fa6e406aa3873dd45d9a7d8cff80
+        }
+    }
+}
+foreach ext [lsort [array names known_extensions]] {
+    subport ${name}-${ext} {}
+}
 
-set python_version  314
-set python_branch   \
-    [string index ${python_version} 0].[string range ${python_version} 1 end]
+if {${subport} ne ${name}} {
+    set ext         [string range ${subport} [string length ${name}-] end]
+    set platform    [expr {${build_arch} eq "arm64" ? "osx_arm64" : "osx_amd64"}]
+    description     DuckDB's ${ext} extension
+    long_description \
+        DuckDB's own signed build of its ${ext} extension, installed where \
+        DuckDB finds it by name.
+    set entry       $known_extensions(${ext})
+    license         {*}[expr {[dict exists ${entry} license] ? [dict get ${entry} license] : "MIT"}]
+    set archs       {}
+    foreach {p a} {osx_arm64 arm64 osx_amd64 x86_64} {
+        if {[dict exists ${entry} ${p}]} {lappend archs ${a}}
+    }
+    supported_archs {*}${archs}
+    universal_variant no
+    # A signed binary: none of the main port's OpenSSL handling applies.
+    openssl.branch  no_version
+    # DuckDB's macOS extensions are built for macOS 11 and later.
+    platforms       {darwin >= 20}
 
-configure.args-append \
-                    -DBUILD_EXTENSIONS='autocomplete\;icu\;parquet\;json' \
-                    -DENABLE_EXTENSION_AUTOLOADING=1 \
-                    -DENABLE_EXTENSION_AUTOINSTALL=1 \
-                    -DOVERRIDE_GIT_DESCRIBE=v${version} \
-                    -DCMAKE_CXX_STANDARD=14 \
-                    -DPython3_EXECUTABLE=${prefix}/bin/python${python_branch}
+    master_sites    https://extensions.duckdb.org/v${version}/${platform}/
+    distname        ${ext}.duckdb_extension
+    extract.suffix  .gz
+    dist_subdir     ${name}/v${version}/${platform}
+    # Only where DuckDB publishes the file; supported_archs excludes the rest.
+    # md5 is not a checksum here: livecheck compares it with the published
+    # file, which DuckDB can replace at the same URL after a release.
+    if {[dict exists ${entry} ${platform}]} {
+        checksums   {*}[dict remove [dict get ${entry} ${platform}] md5]
+        livecheck.type  md5
+        livecheck.url   ${master_sites}${distname}${extract.suffix}
+        livecheck.md5   [dict get ${entry} ${platform} md5]
+    }
+    extract.only
+    depends_build-delete \
+                    path:bin/cmake:cmake port:ninja
+    depends_lib     port:${name}
+    if {[dict exists ${entry} depends]} {
+        foreach dep [dict get ${entry} depends] {
+            depends_lib-append port:${name}-${dep}
+        }
+    }
+    if {[dict exists ${entry} notes]} {
+        notes       [dict get ${entry} notes]
+    }
+    use_configure   no
 
-# C++14 for std::hash on enum class keys; older libc++ lacks it in C++11 mode
-compiler.cxx_standard 2014
+    build {
+        xinstall -d ${workpath}/ext/v${version}/${platform}
+        system "gunzip -c [shellescape ${distpath}/${distfiles}] > [shellescape ${workpath}/ext/v${version}/${platform}/${ext}.duckdb_extension]"
+    }
+    # The file must load into the installed DuckDB, from a directory named at
+    # run time, with an empty HOME and nothing downloaded.
+    test.run        yes
+    test {
+        # ui writes into ~/.duckdb and fails if it is missing (duckdb-ui#203).
+        file mkdir ${workpath}/home/.duckdb
+        # The installed extensions follow this one's, for its depends.
+        set sql "SET autoinstall_known_extensions=false;\
+                 SET extension_directories=\['[string map {' ''} ${workpath}/ext]',\
+                     '[string map {' ''} ${extension_dir}]'\];\
+                 LOAD ${ext};\
+                 SELECT loaded FROM duckdb_extensions()\
+                     WHERE extension_name = '${ext}';"
+        system -W ${workpath} "env HOME=[shellescape ${workpath}/home]\
+            ${prefix}/bin/duckdb -csv -noheader -c [shellescape ${sql}]\
+            | grep -qx true"
+        if {[llength [glob -nocomplain ${workpath}/home/.duckdb/extensions/*/*/*]] > 0} {
+            return -code error "a download reached ${workpath}/home"
+        }
+    }
+    destroot {
+        xinstall -d ${destroot}${extension_dir}/v${version}/${platform}
+        xinstall -m 0644 ${workpath}/ext/v${version}/${platform}/${ext}.duckdb_extension \
+            ${destroot}${extension_dir}/v${version}/${platform}/
+    }
+} else {
+    patchfiles-append   no-ccache.patch \
+                        no-clangd-cache.patch
 
-depends_build-append \
-                    port:pkgconfig \
-                    port:python${python_version} \
-                    port:zstd
+    set python_version  314
+    set python_branch   \
+        [string index ${python_version} 0].[string range ${python_version} 1 end]
 
-if {[string match *gcc* ${configure.compiler}]} {
-    # Without the following setting, the build fails miserably at linking with every possible symbol undefined.
-    # Undefined symbols: __ZNK6duckdb5Value14GetValueUnsafeItEET_v, __ZN6duckdb11LogicalType3MAPES0_S0_ etc.
     configure.args-append \
-                    -DEXTENSION_STATIC_BUILD=TRUE
-    configure.ldflags-append \
-                    -latomic
+                        -DBUILD_EXTENSIONS='autocomplete\;icu\;parquet\;json' \
+                        -DENABLE_EXTENSION_AUTOLOADING=1 \
+                        -DENABLE_EXTENSION_AUTOINSTALL=0 \
+                        -DEXTENSION_DIRECTORIES='~/.duckdb/extensions\;${prefix}/lib/duckdb/extensions' \
+                        -DOVERRIDE_GIT_DESCRIBE=v${version} \
+                        -DCMAKE_CXX_STANDARD=14 \
+                        -DPython3_EXECUTABLE=${prefix}/bin/python${python_branch}
+
+    # C++14 for std::hash on enum class keys; older libc++ lacks it in C++11 mode
+    compiler.cxx_standard 2014
+
+    depends_build-append \
+                        port:pkgconfig \
+                        port:python${python_version} \
+                        port:zstd
+
+    if {[string match *gcc* ${configure.compiler}]} {
+        # Without the following setting, the build fails miserably at linking with every possible symbol undefined.
+        # Undefined symbols: __ZNK6duckdb5Value14GetValueUnsafeItEET_v, __ZN6duckdb11LogicalType3MAPES0_S0_ etc.
+        configure.args-append \
+                        -DEXTENSION_STATIC_BUILD=TRUE
+        configure.ldflags-append \
+                        -latomic
+    }
+
+    # DuckDB's sqlite, httpfs and postgres extensions,
+    # built into the library unconditionally, at the commits DuckDB pins for
+    # this release (.github/config/extensions/*.cmake), each linked to the
+    # MacPorts library it needs instead of the copy it would bundle. Each entry
+    # names its repository under github.com/duckdb, its commit and checksums,
+    # and optionally the patches to apply and paths to delete, in that order;
+    # whether it compiles database-connector; and the tests of its suite to
+    # skip. postgres_scanner's second patch renames its AttachFunctionData,
+    # which shares a name with the SQLite scanner's: with both in one library,
+    # postgres_attach got the wrong one. Its skipped test runs INSTALL httpfs;
+    # httpfs's skipped tests fail offline or compare live responses.
+    set static_extensions {
+        sqlite_scanner {
+            repo        duckdb-sqlite
+            commit      5274128259f73166c1f37f01190a4601f84c5525
+            checksums { \
+                rmd160 fca4cc0fcd82a64e3de861552a4e7fd473632d34 \
+                sha256 3e5838119233985a3b2cb96afb7e80d5f86a6a7fe894ee0ce65c73d7554f2f82 \
+                size 4702656
+            }
+            patches     patch-sqlite-scanner-system-sqlite.diff
+            delete      src/sqlite
+            connector   yes
+        }
+        httpfs {
+            repo        duckdb-httpfs
+            commit      4bc690dba4496c765777a0269d48fdbaff7cdc11
+            checksums { \
+                rmd160 4bc96d752db32ab3b4383758e4d7408a4a33f1fa \
+                sha256 094aef2364bdfb2fe69dca03b6a53723a25e8cc5ccd08b057cf797892d487e6f \
+                size 145022
+            }
+            skip_tests {
+                test/sql/connection_caching.test
+                test/sql/copy/s3/glob_s3_recursive.test_slow
+                test/sql/curl_client/test_load_other_extensions.test
+                test/sql/logging/http_logging.test
+                test/sql/s3/connection_caching_s3.test
+            }
+        }
+        postgres_scanner {
+            repo        duckdb-postgres
+            commit      318dabb2474fc3789b0199301a2e661e19c1b4fc
+            checksums { \
+                rmd160 7024edf72893d271d0e02c7dc063df9c0c820f5c \
+                sha256 6c063c0149914c63e43a876fdd68c72aafe9f0943ab600fea6a1cb826eb570cb \
+                size 322992
+            }
+            patches {
+                patch-postgres-scanner-link-builtin.diff
+                patch-postgres-scanner-attach-data.diff
+            }
+            connector   yes
+            skip_tests  test/sql/storage/attach_secret_storage.test
+        }
+    }
+    # The source directory of each, as extracted.
+    dict for {ext entry} ${static_extensions} {
+        set static_dir(${ext}) \
+            ${workpath}/[dict get ${entry} repo]-[dict get ${entry} commit]
+    }
+
+    # Both scanners compile database-connector, a git submodule each pins at
+    # its own commit, into the one library. Both get postgres's pin, so that
+    # the definitions they share are the same code.
+    set database_connector_commit 0a8505f775dae7bb30edd37f848d5975bf72884e
+    set pg                      postgresql18
+
+    dict for {ext entry} ${static_extensions} {
+        set distfile [dict get ${entry} repo]-[dict get ${entry} commit].tar.gz
+        master_sites-append https://codeload.github.com/duckdb/[dict get ${entry} repo]/tar.gz/[dict get ${entry} commit]?dummy=:${ext}
+        distfiles-append    ${distfile}:${ext}
+        checksums-append    ${distfile} {*}[dict get ${entry} checksums]
+    }
+    master_sites-append https://codeload.github.com/duckdb/database-connector/tar.gz/${database_connector_commit}?dummy=:connector
+    distfiles-append    database-connector-${database_connector_commit}.tar.gz:connector
+    checksums-append    database-connector-${database_connector_commit}.tar.gz \
+                        rmd160  78bc8c447419b728983b2932f490839763b897c1 \
+                        sha256  75183a89b801ce7a172594580665ce321684e6831dbb632d8770be94b166e07b \
+                        size    168707
+
+    # sqlite: the sqlite3 port's library instead of its bundled SQLite 3.38.1.
+    # httpfs: curl and OpenSSL, and DuckDB's own mbedtls, which libduckdb
+    # already carries. postgres: postgresql18's libpq (it uses libpq's OAuth
+    # hooks, new in PostgreSQL 18), linked into the built-in form by a patch,
+    # as upstream builds it loadable only.
+    depends_lib-append  port:sqlite3 \
+                        port:curl \
+                        port:${pg}
+    configure.args-append \
+                        -DSQLite3_INCLUDE_DIR=${prefix}/include \
+                        -DSQLite3_LIBRARY=${prefix}/lib/libsqlite3.dylib \
+                        -DCURL_INCLUDE_DIR=${prefix}/include \
+                        -DCURL_LIBRARY=${prefix}/lib/libcurl.dylib \
+                        -DPostgreSQL_INCLUDE_DIR=${prefix}/include/${pg} \
+                        -DPostgreSQL_LIBRARY=${prefix}/lib/${pg}/libpq.dylib \
+                        -DDUCKDB_EXTENSION_CONFIGS=${workpath}/extensions.cmake
+
+    post-extract {
+        set fd [open ${workpath}/extensions.cmake w]
+        dict for {ext entry} ${static_extensions} {
+            if {[dict exists ${entry} connector]} {
+                delete $static_dir(${ext})/database-connector
+                copy ${workpath}/database-connector-${database_connector_commit} \
+                    $static_dir(${ext})/database-connector
+            }
+            puts ${fd} "duckdb_extension_load(${ext}"
+            puts ${fd} "    SOURCE_DIR $static_dir(${ext})"
+            puts ${fd} "    EXTENSION_VERSION [string range [dict get ${entry} commit] 0 9])"
+        }
+        # Loadable only, not linked into the library: the postgres_scanner suite
+        # generates its test database with them.
+        puts ${fd} "duckdb_extension_load(tpch DONT_LINK)"
+        puts ${fd} "duckdb_extension_load(tpcds DONT_LINK)"
+        close ${fd}
+    }
+    post-patch {
+        dict for {ext entry} ${static_extensions} {
+            if {[dict exists ${entry} patches]} {
+                foreach patch [dict get ${entry} patches] {
+                    system -W $static_dir(${ext}) \
+                        "${patch.cmd} -p0 < [shellescape ${filespath}/${patch}]"
+                }
+            }
+            if {[dict exists ${entry} delete]} {
+                foreach path [dict get ${entry} delete] {
+                    delete $static_dir(${ext})/${path}
+                }
+            }
+        }
+    }
+
+    # DuckDB's own suites, run by the unittest runner every build already
+    # links: the core suite, then each built-in extension's.
+    # postgres_scanner's runs against a throwaway server (files/postgres-test.sh).
+    test.run            yes
+
+    # Most tests that reach the network skip themselves when a request fails
+    # with an HTTP error. These do not: they fail offline, or compare live
+    # responses. Each static extension's own are in static_extensions.
+    set unittest_skip(core) {
+        test/extension/install_extension_httpfs.test
+        test/sql/attach/remote_file_concurrently.test
+        test/sql/attach/attach_remote_http_logging.test
+    }
+
+    test {
+        # The remote optimizer test forks, and macOS aborts the child when it
+        # touches the Objective-C runtime; ~[.] keeps the default hidden set out.
+        set suites [list core ${worksrcpath} \
+            {~[.] ~"Test using a remote optimizer pass in case thats important to someone"}]
+        dict for {ext entry} ${static_extensions} {
+            lappend suites ${ext} $static_dir(${ext}) {test/*}
+            set unittest_skip(${ext}) [expr {[dict exists ${entry} skip_tests] \
+                ? [dict get ${entry} skip_tests] : {}}]
+        }
+        foreach {suite dir spec} ${suites} {
+            set args "--test-dir [shellescape ${dir}]"
+            if {[llength $unittest_skip(${suite})] > 0} {
+                set config ${workpath}/unittest-${suite}.json
+                set paths {}
+                foreach path $unittest_skip(${suite}) {
+                    lappend paths "\"${path}\""
+                }
+                set fd [open ${config} w]
+                puts ${fd} "{\"skip_tests\": \[{\"reason\": \"network\", \"paths\": \[[join ${paths} {, }]\]}\]}"
+                close ${fd}
+                append args " --test-config [shellescape ${config}]"
+            }
+            set cmd "[shellescape ${build.dir}/test/unittest] ${args} [shellescape ${spec}]"
+            if {${suite} eq "postgres_scanner"} {
+                set cmd "/bin/sh [shellescape ${filespath}/postgres-test.sh] \
+                    [shellescape ${prefix}/lib/${pg}/bin] [shellescape ${build.dir}] \
+                    [shellescape ${dir}] [shellescape ${workpath}/pg] ${cmd}"
+            }
+            ui_info "Running DuckDB's ${suite} tests"
+            # The libcurl httpfs uses honours http_proxy, which MacPorts
+            # exports from proxy_http; requests to the suites' local servers
+            # must not go through it.
+            system -W ${dir} "env no_proxy=localhost,127.0.0.1 NO_PROXY=localhost,127.0.0.1 ${cmd}"
+        }
+    }
 }

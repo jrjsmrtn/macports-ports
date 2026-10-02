@@ -1,0 +1,32 @@
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -3,7 +3,8 @@
+ set(EXTENSION_NAME ${TARGET_NAME}_extension)
+ project(${TARGET_NAME})
+ 
+-include_directories(src/sqlite)
++find_package(SQLite3 REQUIRED)
++include_directories(${SQLite3_INCLUDE_DIRS})
+ include_directories(database-connector/src/include)
+ 
+ add_subdirectory(src)
+@@ -13,6 +14,9 @@
+ set(PARAMETERS "-warnings")
+ build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${EXTENSION_OBJECT_FILES})
+ 
++target_link_libraries(${EXTENSION_NAME} ${SQLite3_LIBRARIES})
++target_link_libraries(${TARGET_NAME}_loadable_extension ${SQLite3_LIBRARIES})
++
+ install(
+   TARGETS ${EXTENSION_NAME}
+   EXPORT "${DUCKDB_EXPORT_SET}"
+--- src/CMakeLists.txt
++++ src/CMakeLists.txt
+@@ -1,7 +1,6 @@
+ include_directories(include)
+ 
+ add_subdirectory(dbconnector)
+-add_subdirectory(sqlite)
+ add_subdirectory(storage)
+ 
+ add_library(

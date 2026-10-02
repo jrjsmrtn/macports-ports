@@ -1,0 +1,29 @@
+--- src/postgres_attach.cpp.orig
++++ src/postgres_attach.cpp
+@@ -7,7 +7,7 @@
+ 
+ namespace duckdb {
+ 
+-struct AttachFunctionData : public TableFunctionData {
++struct PostgresAttachFunctionData : public TableFunctionData {
+ 	bool finished = false;
+ 	string source_schema = "public";
+ 	string sink_schema = "main";
+@@ -20,7 +20,7 @@
+ 
+ static unique_ptr<FunctionData> AttachBind(ClientContext &context, TableFunctionBindInput &input,
+                                            vector<LogicalType> &return_types, vector<string> &names) {
+-	auto result = make_uniq<AttachFunctionData>();
++	auto result = make_uniq<PostgresAttachFunctionData>();
+ 	result->dsn = input.inputs[0].GetValue<string>();
+ 
+ 	for (auto &kv : input.named_parameters) {
+@@ -41,7 +41,7 @@
+ }
+ 
+ static void AttachFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
+-	auto &data = (AttachFunctionData &)*data_p.bind_data;
++	auto &data = (PostgresAttachFunctionData &)*data_p.bind_data;
+ 	if (data.finished) {
+ 		return;
+ 	}

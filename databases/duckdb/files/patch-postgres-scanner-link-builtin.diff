@@ -1,0 +1,10 @@
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -39,6 +39,7 @@
+ 
+ build_static_extension(${TARGET_NAME} ${ALL_OBJECT_FILES})
+ build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ALL_OBJECT_FILES})
++target_link_libraries(${EXTENSION_NAME} ${PostgreSQL_LIBRARIES} ${OPENSSL_LIBRARIES})
+ 
+ # Fix for ELF symbol conflict when loaded inside PostgreSQL backend
+ # Use -Bsymbolic to force the extension to prefer its own symbols over global ones
