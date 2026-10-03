@@ -433,8 +433,13 @@ if {${subport} ne ${name}} {
             ${destroot}${extension_dir}/v${version}/${platform}/
     }
 } else {
+    # DuckDB's extension binaries carry their own copy of the extension
+    # loader, which reads the extension options and falls back to its own
+    # defaults, ~/.duckdb alone and autoinstall on: iceberg's autoload of avro
+    # downloaded it. Store this build's, so that every copy follows them.
     patchfiles-append   no-ccache.patch \
-                        no-clangd-cache.patch
+                        no-clangd-cache.patch \
+                        patch-extension-directories-default.diff
 
     set python_version  314
     set python_branch   \
