@@ -8,7 +8,7 @@ PortGroup           openssl 1.0
 
 name                postgresql18
 version             18.6
-revision            0
+revision            1
 
 categories          databases
 maintainers         {gmail.com:davidgilman1 @dgilman} \
@@ -99,7 +99,55 @@ compiler.blacklist-append {clang < 421}
 compilers.choose          cc cxx
 compilers.setup           -gcc -fortran -clang33 -clang34 -clang37 -clang90 \
                           -clang11 -clang12 -clang13
-notes "To use the postgresql server as a startup item install the ${name}-server port."
+# libpq, its headers and pg_config, for ports that only need the client library: the
+# directories `make install` runs in, here and to keep them out of ${name} itself.
+set libpq_dirs      {src/include src/common src/port src/interfaces/libpq src/bin/pg_config}
+
+subport ${name}-libpq {
+    revision        0
+    description     PostgreSQL 18 client library (libpq), its headers and pg_config.
+    long_description \
+                    ${description} For ports that only need to connect to a PostgreSQL \
+                    server. ${name} depends on it and installs the rest.
+    depends_lib     path:lib/libgssapi_krb5.dylib:kerberos5
+    depends_build   port:bison port:pkgconfig path:bin/perl:perl5
+    depends_run     path:share/curl/curl-ca-bundle.crt:curl-ca-bundle
+    configure.args-delete \
+                    --with-bonjour --with-readline --with-zlib --with-lz4 --with-zstd \
+                    --with-libxml --with-libxslt --with-uuid=e2fs --with-icu
+    configure.args-append \
+                    --without-readline --without-zlib --without-icu
+    build {
+        foreach dir ${libpq_dirs} {
+            system -W ${worksrcpath} "${build.cmd} -C ${dir}"
+        }
+    }
+    destroot {
+        foreach dir ${libpq_dirs} {
+            system -W ${worksrcpath} "${build.cmd} -C ${dir} install DESTDIR=${destroot}"
+        }
+    }
+    test.run        no
+    livecheck.type  none
+
+    # ${name} before 18.6_1 installed these files itself, so it cannot stay active while
+    # this activates: deactivate it, and the upgrade then activates the new ${name}.
+    pre-activate {
+        if {![catch {set active [lindex [registry_active ${name}] 0]}]} {
+            set v [lindex ${active} 1]
+            set r [lindex ${active} 2]
+            if {[vercmp ${v} 18.6] < 0 || ([vercmp ${v} 18.6] == 0 && ${r} < 1)} {
+                ui_info "Deactivating ${name} @${v}_${r}, which still contains libpq"
+                registry_deactivate_composite ${name} "" [list ports_nodepcheck 1]
+            }
+        }
+    }
+}
+
+if {${subport} eq ${name}} {
+    depends_lib-append  port:${name}-libpq
+    notes "To use the postgresql server as a startup item install the ${name}-server port."
+}
 
 if {${universal_possible} && [variant_isset universal]} {
     configure.cflags-append    -DAC_APPLE_UNIVERSAL_BUILD
@@ -120,6 +168,7 @@ livecheck.type      regex
 livecheck.regex    alt="v(18\\.\[.0-9\]+)"
 livecheck.url       ${homepage}/ftp/source/
 
+if {${subport} eq ${name}} {
 post-destroot {
     ln -s ${libdir}/bin/psql ${destroot}${prefix}/bin/psql18
 
@@ -132,9 +181,25 @@ post-destroot {
     foreach manpage [glob -type f ${destroot}${mandir}/man\[1-9\]/*] {
         system "$gzip -9vf ${manpage}"
     }
+
+    # What ${name}-libpq installs, from these sources: leave it to that port.
+    set libpqroot ${workpath}/libpq-root
+    file delete -force ${libpqroot}
+    foreach dir ${libpq_dirs} {
+        system -W ${worksrcpath} "${build.cmd} -C ${dir} install DESTDIR=${libpqroot}"
+    }
+    fs-traverse f ${libpqroot} {
+        if {[file type ${f}] ne "directory"} {
+            set rel [string range ${f} [string length ${libpqroot}] end]
+            file delete ${destroot}${rel}
+        }
+    }
+}
 }
 
-if {!${universal_possible} || ![variant_isset universal]} {
+if {${subport} ne ${name}} {
+    # pgxs is not part of ${name}-libpq
+} elseif {!${universal_possible} || ![variant_isset universal]} {
     post-destroot {
         reinplace -E "s#-arch\[\[:space:\]\]+\[\[:alnum:\]_\]+##g" \
             ${destroot}${prefix}/lib/${name}/pgxs/src/Makefile.global
