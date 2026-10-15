@@ -1,0 +1,92 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cargo   1.0
+PortGroup           github  1.0
+
+github.setup        J-x-Z waypipe-darwin 0.11.2 v -darwin.1
+github.tarball_from archive
+revision            0
+
+description         Proxy for Wayland clients, with macOS support
+
+long_description    {*}${description}. Waypipe forwards the Wayland protocol \
+                    between a client and a compositor on another machine or \
+                    in a container, over SSH or a Unix socket. This fork of \
+                    Waypipe adds the shared memory and socket handling it \
+                    needs to run on macOS, for example with Cocoa-Way.
+
+categories          net x11
+installs_libs       no
+license             GPL-3+
+maintainers         @jrjsmrtn openmaintainer
+
+checksums           ${distname}${extract.suffix} \
+                    rmd160  59e55da220b97dc7e828cdf4ee7a54bd4ddeb38d \
+                    sha256  c273ee104a00a7b91d8ba4a7a7df0ff79b0b0ce1e724985685bb86b5c2cd5fa6 \
+                    size    588841
+
+depends_build-append \
+                    port:scdoc
+
+# Without lz4 and zstd compression, whose wrappers need the bindgen tool. DMA-BUF,
+# GBM and video are Linux-only.
+build.args-append   --no-default-features
+
+post-build {
+    system -W ${worksrcpath} "${prefix}/bin/scdoc < waypipe.scd > waypipe.1"
+}
+
+test.run            yes
+test.cmd            ${cargo.bin} test
+# The default target, "test", would be passed to cargo as a test name filter.
+test.target
+test.args           --target [cargo.rust_platform] \
+                    --no-default-features --features test_proto
+
+destroot {
+    xinstall -m 0755 \
+        ${worksrcpath}/target/[cargo.rust_platform]/release/waypipe \
+        ${destroot}${prefix}/bin/
+    xinstall -m 0644 ${worksrcpath}/waypipe.1 ${destroot}${prefix}/share/man/man1/
+    set docdir ${destroot}${prefix}/share/doc/${name}
+    xinstall -d ${docdir}
+    xinstall -m 0644 -W ${worksrcpath} LICENSE.GPLv3 LICENSE.MIT README.md ${docdir}
+}
+
+cargo.crates \
+    anstream                        0.6.18  8acc5369981196006228e28809f761875c0327210a891e941f4c683b3a99529b \
+    anstyle                         1.0.10  55cc3b69f167a1ef2e161439aa98aed94e6028e5f9a59be9a6ffb47aef1651f9 \
+    anstyle-parse                    0.2.6  3b2d16507662817a6a20a9ea92df6652ee4f94f914589377d69f3b21bc5798a9 \
+    anstyle-query                    1.1.2  79947af37f4177cfead1110013d678905c37501914fba0efea834c3fe9a8d60c \
+    anstyle-wincon                   3.0.6  2109dbce0e72be3ec00bed26e6a7479ca384ad226efdd66db8fa2e3a38c83125 \
+    ash                           0.38.0+1.3.281  0bb44936d800fea8f016d7f2311c6a4f97aebd5dc86f09906139ec848cf3a46f \
+    autocfg                          1.4.0  ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26 \
+    bitflags                         2.6.0  b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de \
+    cfg-if                           1.0.0  baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd \
+    cfg_aliases                      0.2.1  613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724 \
+    clap                            4.5.21  fb3b4b9e5a7c7514dfa52869339ee98b3156b0bfb4e8a77c4ff4babb64b1604f \
+    clap_builder                    4.5.21  b17a95aa67cc7b5ebd32aa5370189aa0d79069ef1c64ce893bd30fb24bff20ec \
+    clap_lex                         0.7.3  afb84c814227b90d6895e01398aee0d8033c00e7466aca416fb6a8e0eb19d8a7 \
+    colorchoice                      1.0.3  5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990 \
+    getrandom                       0.2.15  c4567c8db10ae91089c99af84c68c38da3ec2f087c3f82960bcdbf3656b6f4d7 \
+    is_terminal_polyfill            1.70.1  7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf \
+    libc                           0.2.177  2874a2af47a2325c2001a6e6fad9b16a53b802102b528163885171cf92b15976 \
+    libloading                       0.8.5  4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4 \
+    log                             0.4.22  a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24 \
+    memoffset                        0.9.1  488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a \
+    nix                             0.30.1  74523f3a35e05aba87a1d978330aef40f67b0304ac79c1c00b294c9830543db6 \
+    pkg-config                      0.3.31  953ec861398dccce10c670dfeaf3ec4911ca479e9c02154b3a215178c5f566f2 \
+    strsim                          0.11.1  7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f \
+    utf8parse                        0.2.2  06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821 \
+    wasi                          0.11.0+wasi-snapshot-preview1  9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423 \
+    windows-sys                     0.59.0  1e38bc4d79ed67fd075bcc251a1c39b32a1776bbe92e5bef1f0bf1f8c531853b \
+    windows-targets                 0.52.6  9b724f72796e036ab90c1021d4780d4d3d648aca59e491e6b98e725b84e99973 \
+    windows_aarch64_gnullvm         0.52.6  32a4622180e7a0ec044bb555404c800bc9fd9ec262ec147edd5989ccd0c02cd3 \
+    windows_aarch64_msvc            0.52.6  09ec2a7bb152e2252b53fa7803150007879548bc709c039df7627cabbd05d469 \
+    windows_i686_gnu                0.52.6  8e9b5ad5ab802e97eb8e295ac6720e509ee4c243f69d781394014ebfe8bbfa0b \
+    windows_i686_gnullvm            0.52.6  0eee52d38c090b3caa76c563b86c3a4bd71ef1a819287c19d586d7334ae8ed66 \
+    windows_i686_msvc               0.52.6  240948bc05c5e7c6dabba28bf89d89ffce3e303022809e73deaefe4f6ec56c66 \
+    windows_x86_64_gnu              0.52.6  147a5c80aabfbf0c7d901cb5895d1de30ef2907eb21fbbab29ca94c5b08b1a78 \
+    windows_x86_64_gnullvm          0.52.6  24d5b23dc417412679681396f2b49f3de8c1473deb516bd34410872eff51ed0d \
+    windows_x86_64_msvc             0.52.6  589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec
