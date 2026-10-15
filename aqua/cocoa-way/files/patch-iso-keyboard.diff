@@ -1,0 +1,160 @@
+--- src/keymap.rs
++++ src/keymap.rs
+@@ -1,4 +1,70 @@
+-use winit::keyboard::{KeyCode, PhysicalKey};
++use objc2_app_kit::{NSApplication, NSEventType};
++use objc2_foundation::MainThreadMarker;
++use winit::keyboard::{KeyCode, NativeKeyCode, PhysicalKey};
++
++// macOS virtual key codes, from HIToolbox's Events.h.
++const KVK_ISO_SECTION: u16 = 0x0a;
++const KVK_ANSI_GRAVE: u16 = 0x32;
++const KVK_JIS_UNDERSCORE: u16 = 0x5e;
++const KVK_JIS_KEYPAD_COMMA: u16 = 0x5f;
++const KVK_JIS_EISU: u16 = 0x66;
++const KVK_JIS_KANA: u16 = 0x68;
++
++/// The physical layout of a keyboard, as KBGetLayoutType reports it.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum KeyboardLayout {
++    Ansi,
++    Iso,
++    Jis,
++    Unknown,
++}
++
++impl KeyboardLayout {
++    pub fn from_layout_type(layout_type: u32) -> Self {
++        match &layout_type.to_be_bytes() {
++            b"ANSI" => Self::Ansi,
++            b"ISO " => Self::Iso,
++            b"JIS " => Self::Jis,
++            _ => Self::Unknown,
++        }
++    }
++}
++
++/// The evdev code for a key Winit reports as Backquote, which it does for both
++/// kVK_ANSI_Grave and kVK_ISO_Section. On an ISO keyboard macOS reports the key
++/// below Escape as kVK_ISO_Section and the key beside left Shift as
++/// kVK_ANSI_Grave, so they are mapped as Linux's hid_apple does with iso_layout=1.
++pub fn backquote_key(mac_keycode: Option<u16>, layout: KeyboardLayout) -> u32 {
++    match (mac_keycode, layout) {
++        (Some(KVK_ANSI_GRAVE), KeyboardLayout::Iso) => 86,
++        // The key below Escape, whatever the layout.
++        (Some(KVK_ISO_SECTION), _) => 41,
++        _ => 41,
++    }
++}
++
++/// The macOS key code of the key event AppKit is dispatching, which Winit's
++/// KeyEvent does not carry.
++pub fn current_mac_keycode() -> Option<u16> {
++    let mtm = MainThreadMarker::new()?;
++    let event = NSApplication::sharedApplication(mtm).currentEvent()?;
++    match unsafe { event.r#type() } {
++        NSEventType::KeyDown | NSEventType::KeyUp => Some(unsafe { event.keyCode() }),
++        _ => None,
++    }
++}
++
++/// The layout of the keyboard last typed on.
++pub fn current_layout() -> KeyboardLayout {
++    KeyboardLayout::from_layout_type(unsafe { KBGetLayoutType(LMGetKbdType().into()) })
++}
++
++#[link(name = "Carbon", kind = "framework")]
++unsafe extern "C" {
++    fn LMGetKbdType() -> u8;
++    fn KBGetLayoutType(keyboard_type: i16) -> u32;
++}
++
+ pub fn map_key(key: PhysicalKey) -> Option<u32> {
+     match key {
+         PhysicalKey::Code(code) => match code {
+@@ -86,6 +152,7 @@ pub fn map_key(key: PhysicalKey) -> Option<u32> {
+             KeyCode::Numpad0 => Some(82),
+             KeyCode::NumpadDecimal => Some(83),
+             KeyCode::IntlBackslash => Some(86),
++            KeyCode::IntlYen => Some(124),
+             KeyCode::F11 => Some(87),
+             KeyCode::F12 => Some(88),
+             KeyCode::NumpadEnter => Some(96),
+@@ -114,6 +181,15 @@ pub fn map_key(key: PhysicalKey) -> Option<u32> {
+             KeyCode::ContextMenu => Some(127),
+             _ => None,
+         },
++        // JIS keys Winit leaves unidentified, mapped as Linux maps the HID usages
++        // International1, Keypad Comma, LANG1 and LANG2.
++        PhysicalKey::Unidentified(NativeKeyCode::MacOS(code)) => match code {
++            KVK_JIS_UNDERSCORE => Some(89),
++            KVK_JIS_KEYPAD_COMMA => Some(121),
++            KVK_JIS_KANA => Some(122),
++            KVK_JIS_EISU => Some(123),
++            _ => None,
++        },
+         _ => None,
+     }
+ }
+@@ -129,4 +205,39 @@ mod tests {
+         assert_eq!(map_key(PhysicalKey::Code(KeyCode::KeyC)), Some(46));
+         assert_eq!(map_key(PhysicalKey::Code(KeyCode::KeyV)), Some(47));
+     }
++
++    #[test]
++    fn layout_types_are_four_character_codes() {
++        assert_eq!(KeyboardLayout::from_layout_type(0x414e_5349), KeyboardLayout::Ansi);
++        assert_eq!(KeyboardLayout::from_layout_type(0x4953_4f20), KeyboardLayout::Iso);
++        assert_eq!(KeyboardLayout::from_layout_type(0x4a49_5320), KeyboardLayout::Jis);
++        assert_eq!(KeyboardLayout::from_layout_type(0x3f3f_3f3f), KeyboardLayout::Unknown);
++    }
++
++    #[test]
++    fn iso_keyboards_separate_grave_and_102nd() {
++        let iso = KeyboardLayout::Iso;
++        assert_eq!(backquote_key(Some(KVK_ISO_SECTION), iso), 41);
++        assert_eq!(backquote_key(Some(KVK_ANSI_GRAVE), iso), 86);
++    }
++
++    #[test]
++    fn other_keyboards_keep_grave() {
++        for layout in [KeyboardLayout::Ansi, KeyboardLayout::Jis, KeyboardLayout::Unknown] {
++            assert_eq!(backquote_key(Some(KVK_ANSI_GRAVE), layout), 41);
++            assert_eq!(backquote_key(Some(KVK_ISO_SECTION), layout), 41);
++        }
++        assert_eq!(backquote_key(None, KeyboardLayout::Iso), 41);
++    }
++
++    #[test]
++    fn jis_keys_use_linux_evdev_codes() {
++        let native = |code| PhysicalKey::Unidentified(NativeKeyCode::MacOS(code));
++        assert_eq!(map_key(PhysicalKey::Code(KeyCode::IntlYen)), Some(124));
++        assert_eq!(map_key(native(KVK_JIS_UNDERSCORE)), Some(89));
++        assert_eq!(map_key(native(KVK_JIS_KEYPAD_COMMA)), Some(121));
++        assert_eq!(map_key(native(KVK_JIS_KANA)), Some(122));
++        assert_eq!(map_key(native(KVK_JIS_EISU)), Some(123));
++        assert_eq!(map_key(native(0x34)), None);
++    }
+ }
+--- src/main.rs
++++ src/main.rs
+@@ -3132,8 +3132,17 @@ fn forward_keyboard_event(
+     event: KeyEvent,
+     time: u32,
+ ) {
+-    let Some(scancode) = crate::keymap::map_key(event.physical_key) else {
+-        return;
++    let scancode = match event.physical_key {
++        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Backquote) => {
++            crate::keymap::backquote_key(
++                crate::keymap::current_mac_keycode(),
++                crate::keymap::current_layout(),
++            )
++        }
++        key => match crate::keymap::map_key(key) {
++            Some(scancode) => scancode,
++            None => return,
++        },
+     };
+     let key_state = match event.state {
+         ElementState::Pressed => smithay::backend::input::KeyState::Pressed,

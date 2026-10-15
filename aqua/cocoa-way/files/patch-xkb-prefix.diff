@@ -1,0 +1,10 @@
+--- src/runtime_paths.rs
++++ src/runtime_paths.rs
+@@ -47,6 +47,7 @@
+         candidates.push(root);
+     }
+     candidates.extend([
++        PathBuf::from("@PREFIX@/share/X11/xkb"),
+         PathBuf::from("/opt/homebrew/share/X11/xkb"),
+         PathBuf::from("/usr/local/share/X11/xkb"),
+         PathBuf::from("/usr/share/X11/xkb"),
