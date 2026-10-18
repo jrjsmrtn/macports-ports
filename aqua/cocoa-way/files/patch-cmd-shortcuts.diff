@@ -1,0 +1,139 @@
+--- src/macos_gestures.rs
++++ src/macos_gestures.rs
+@@ -1,6 +1,7 @@
+ use block2::RcBlock;
++use objc2::msg_send;
+ use objc2::runtime::AnyObject;
+-use objc2_app_kit::{NSEvent, NSEventMask, NSEventPhase, NSEventType};
++use objc2_app_kit::{NSEvent, NSEventMask, NSEventModifierFlags, NSEventPhase, NSEventType};
+ use std::{
+     cell::RefCell,
+     collections::{HashSet, VecDeque},
+@@ -88,7 +89,36 @@ fn install_monitor() -> Result<objc2::rc::Retained<AnyObject>, String> {
+         let event_ref = unsafe { event.as_ref() };
+         let window_number = unsafe { event_ref.windowNumber() };
+         let tracked = MONITOR.with(|state| state.borrow().windows.contains(&window_number));
+-        if unsafe { event_ref.r#type() } == NSEventType::ScrollWheel {
++        let event_type = unsafe { event_ref.r#type() };
++        if event_type == NSEventType::KeyDown {
++            let command = unsafe { event_ref.modifierFlags() }
++                .contains(NSEventModifierFlags::NSEventModifierFlagCommand);
++            if !key_down_to_guest(tracked, command) {
++                return event.as_ptr();
++            }
++            // Cocoa-Way's own key equivalents first. Anything else goes straight to the
++            // guest window: AppKit would otherwise offer it to the system's app shortcuts,
++            // and "Show Help menu" (Cmd+Shift+/) takes the key without a Help menu.
++            unsafe {
++                let app: *mut AnyObject =
++                    msg_send![objc2::class!(NSApplication), sharedApplication];
++                let menu: *mut AnyObject = msg_send![app, mainMenu];
++                let handled: bool = if menu.is_null() {
++                    false
++                } else {
++                    msg_send![menu, performKeyEquivalent: event_ref]
++                };
++                if !handled {
++                    let window: *mut AnyObject = msg_send![event_ref, window];
++                    if window.is_null() {
++                        return event.as_ptr();
++                    }
++                    let _: () = msg_send![window, sendEvent: event_ref];
++                }
++            }
++            return std::ptr::null_mut();
++        }
++        if event_type == NSEventType::ScrollWheel {
+             if suppress_scroll_momentum(
+                 tracked,
+                 unsafe { event_ref.hasPreciseScrollingDeltas() },
+@@ -106,13 +136,19 @@ fn install_monitor() -> Result<objc2::rc::Retained<AnyObject>, String> {
+     });
+     unsafe {
+         NSEvent::addLocalMonitorForEventsMatchingMask_handler(
+-            NSEventMask::Swipe | NSEventMask::ScrollWheel,
++            NSEventMask::Swipe | NSEventMask::ScrollWheel | NSEventMask::KeyDown,
+             &block,
+         )
+     }
+     .ok_or_else(|| "macOS did not install the local gesture event monitor".into())
+ }
+ 
++// A Cmd key-down in a guest window bypasses AppKit's key-equivalent pass once Cocoa-Way's
++// menu has declined it; other key-downs, and the GUI panel's, are left to AppKit.
++fn key_down_to_guest(tracked: bool, command: bool) -> bool {
++    tracked && command
++}
++
+ fn suppress_scroll_momentum(tracked: bool, precise: bool, momentum: NSEventPhase) -> bool {
+     tracked && precise && momentum != NSEventPhase::None
+ }
+@@ -158,6 +194,14 @@ pub fn uninstall_all_swipe_recognizers() {
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn only_command_key_downs_in_guest_windows_bypass_appkit() {
++        assert!(key_down_to_guest(true, true));
++        assert!(!key_down_to_guest(true, false));
++        assert!(!key_down_to_guest(false, true));
++        assert!(!key_down_to_guest(false, false));
++    }
++
+     #[test]
+     fn raw_finger_scrolls_and_mouse_wheels_reach_winit() {
+         assert!(!suppress_scroll_momentum(true, true, NSEventPhase::None));
+--- src/menu_bar.rs
++++ src/menu_bar.rs
+@@ -386,6 +386,19 @@ fn install_application_icon(app: &NSApplication, mtm: MainThreadMarker) {
+ 
+ // ── Helper ────────────────────────────────────────────────────────────────────
+ 
++// macOS 12 and later move a key equivalent to whichever key types its character with Cmd on
++// the active layout: on Belgian AZERTY, Cmd+1 lands on the & key, and Cmd+& no longer reaches
++// the guest. Keep each equivalent on its own character. macOS 11 has no such property.
++unsafe fn keep_key_equivalent(item: &NSMenuItem) {
++    unsafe {
++        let responds: bool =
++            msg_send![item, respondsToSelector: sel!(setAllowsAutomaticKeyEquivalentLocalization:)];
++        if responds {
++            item.setAllowsAutomaticKeyEquivalentLocalization(false);
++        }
++    }
++}
++
+ unsafe fn label_item(title: &str, mtm: MainThreadMarker) -> Retained<NSMenuItem> {
+     unsafe {
+         NSMenuItem::initWithTitle_action_keyEquivalent(
+@@ -425,6 +438,7 @@ pub fn setup_menu(
+             Some(sel!(terminate:)),
+             &NSString::from_str("q"),
+         );
++        keep_key_equivalent(&quit);
+         app_menu.addItem(&quit);
+         app_item.setSubmenu(Some(&app_menu));
+         root.addItem(&app_item);
+@@ -442,6 +456,7 @@ pub fn setup_menu(
+             &NSString::from_str("n"),
+         );
+         let _: () = msg_send![&*quick, setTarget: &*handler];
++        keep_key_equivalent(&quick);
+         conn_menu.addItem(&quick);
+         conn_menu.addItem(&NSMenuItem::separatorItem(mtm));
+ 
+@@ -521,6 +536,7 @@ pub fn setup_menu(
+             &NSString::from_str("1"),
+         );
+         let _: () = msg_send![&*show_display, setTarget: &*handler];
++        keep_key_equivalent(&show_display);
+         view_menu.addItem(&show_display);
+         view_menu.addItem(&NSMenuItem::separatorItem(mtm));
+         let hidpi = NSMenuItem::initWithTitle_action_keyEquivalent(
+@@ -559,6 +575,7 @@ pub fn setup_menu(
+         let _: () = msg_send![&*restore_desktop, setTarget: &*handler];
+         // Keep the escape action available even when desktop mode is off.
+         let _: () = msg_send![&*restore_desktop, setEnabled: true];
++        keep_key_equivalent(&restore_desktop);
+         view_menu.addItem(&restore_desktop);
+         view_item.setSubmenu(Some(&view_menu));
+         root.addItem(&view_item);

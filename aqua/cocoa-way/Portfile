@@ -37,6 +37,9 @@ patchfiles          patch-xkb-prefix.diff
 # Apple ISO keyboards: the keys below Escape and beside left Shift both
 # reached clients as KEY_GRAVE.
 patchfiles-append   patch-iso-keyboard.diff
+# Cmd shortcuts for the guest: macOS 12+ relocalised Cocoa-Way's key equivalents (Cmd+1 moved
+# to the & key on AZERTY), and AppKit's system shortcuts took the rest (Cmd+Shift+/).
+patchfiles-append   patch-cmd-shortcuts.diff
 
 post-patch {
     reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/runtime_paths.rs
